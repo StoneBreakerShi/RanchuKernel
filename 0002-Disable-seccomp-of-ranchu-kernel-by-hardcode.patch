@@ -1,0 +1,184 @@
+From 96b398cc38c0666ec1700308df84490ebb416499 Mon Sep 17 00:00:00 2001
+From: shichenlai <shichenlai@agora.io>
+Date: Thu, 12 Aug 2021 17:43:18 +0800
+Subject: [PATCH] Disable seccomp of ranchu kernel by hardcode
+
+Signed-off-by: shichenlai <shichenlai@agora.io>
+---
+ kernel/seccomp.c | 54 ++++++++++++++++++------------------------------
+ 1 file changed, 20 insertions(+), 34 deletions(-)
+
+diff --git a/kernel/seccomp.c b/kernel/seccomp.c
+index 075e344a87c3..cdcbb246831d 100644
+--- a/kernel/seccomp.c
++++ b/kernel/seccomp.c
+@@ -215,7 +215,7 @@ static u32 seccomp_run_filters(const struct seccomp_data *sd,
+ 			*match = f;
+ 		}
+ 	}
+-	return ret;
++	return SECCOMP_RET_ALLOW;//ret;
+ }
+ #endif /* CONFIG_SECCOMP_FILTER */
+ 
+@@ -573,23 +573,24 @@ static inline void seccomp_log(unsigned long syscall, long signr, u32 action,
+ 	case SECCOMP_RET_ALLOW:
+ 		break;
+ 	case SECCOMP_RET_TRAP:
+-		log = requested && seccomp_actions_logged & SECCOMP_LOG_TRAP;
++//		log = requested && seccomp_actions_logged & SECCOMP_LOG_TRAP;
+ 		break;
+ 	case SECCOMP_RET_ERRNO:
+-		log = requested && seccomp_actions_logged & SECCOMP_LOG_ERRNO;
++//		log = requested && seccomp_actions_logged & SECCOMP_LOG_ERRNO;
+ 		break;
+ 	case SECCOMP_RET_TRACE:
+-		log = requested && seccomp_actions_logged & SECCOMP_LOG_TRACE;
++//		log = requested && seccomp_actions_logged & SECCOMP_LOG_TRACE;
+ 		break;
+ 	case SECCOMP_RET_LOG:
+-		log = seccomp_actions_logged & SECCOMP_LOG_LOG;
++//		log = seccomp_actions_logged & SECCOMP_LOG_LOG;
+ 		break;
+ 	case SECCOMP_RET_KILL_THREAD:
+-		log = seccomp_actions_logged & SECCOMP_LOG_KILL_THREAD;
++//		log = seccomp_actions_logged & SECCOMP_LOG_KILL_THREAD;
+ 		break;
+ 	case SECCOMP_RET_KILL_PROCESS:
+ 	default:
+-		log = seccomp_actions_logged & SECCOMP_LOG_KILL_PROCESS;
++//		log = seccomp_actions_logged & SECCOMP_LOG_KILL_PROCESS;
++break;
+ 	}
+ 
+ 	/*
+@@ -658,14 +659,10 @@ void secure_computing_strict(int this_syscall)
+ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+ 			    const bool recheck_after_trace)
+ {
+-	u32 filter_ret, action;
++/*	u32 filter_ret, action;
+ 	struct seccomp_filter *match = NULL;
+ 	int data;
+ 
+-	/*
+-	 * Make sure that any changes to mode from another thread have
+-	 * been seen after TIF_SECCOMP was seen.
+-	 */
+ 	rmb();
+ 
+ 	filter_ret = seccomp_run_filters(sd, &match);
+@@ -674,7 +671,6 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+ 
+ 	switch (action) {
+ 	case SECCOMP_RET_ERRNO:
+-		/* Set low-order bits as an errno, capped at MAX_ERRNO. */
+ 		if (data > MAX_ERRNO)
+ 			data = MAX_ERRNO;
+ 		syscall_set_return_value(current, task_pt_regs(current),
+@@ -682,18 +678,14 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+ 		goto skip;
+ 
+ 	case SECCOMP_RET_TRAP:
+-		/* Show the handler the original registers. */
+ 		syscall_rollback(current, task_pt_regs(current));
+-		/* Let the filter pass back 16 bits of data. */
+ 		seccomp_send_sigsys(this_syscall, data);
+ 		goto skip;
+ 
+ 	case SECCOMP_RET_TRACE:
+-		/* We've been put in this state by the ptracer already. */
+ 		if (recheck_after_trace)
+ 			return 0;
+ 
+-		/* ENOSYS these calls if there is no tracer attached. */
+ 		if (!ptrace_event_enabled(current, PTRACE_EVENT_SECCOMP)) {
+ 			syscall_set_return_value(current,
+ 						 task_pt_regs(current),
+@@ -701,7 +693,6 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+ 			goto skip;
+ 		}
+ 
+-		/* Allow the BPF to provide the event message */
+ 		ptrace_event(PTRACE_EVENT_SECCOMP, data);
+ 		/*
+ 		 * The delivery of a fatal signal during event
+@@ -712,10 +703,8 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+ 		 * force the syscall to be skipped and let the signal
+ 		 * kill the process and correctly handle any tracer exit
+ 		 * notifications.
+-		 */
+ 		if (fatal_signal_pending(current))
+ 			goto skip;
+-		/* Check if the tracer forced the syscall to be skipped. */
+ 		this_syscall = syscall_get_nr(current, task_pt_regs(current));
+ 		if (this_syscall < 0)
+ 			goto skip;
+@@ -725,9 +714,8 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+ 		 * intentionally uses a NULL struct seccomp_data to force
+ 		 * a reload of all registers. This does not goto skip since
+ 		 * a skip would have already been reported.
+-		 */
+-		if (__seccomp_filter(this_syscall, NULL, true))
+-			return -1;
++	//	if (__seccomp_filter(this_syscall, NULL, true))
++	//		return -1;
+ 
+ 		return 0;
+ 
+@@ -740,21 +728,17 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+ 		 * Note that the "match" filter will always be NULL for
+ 		 * this action since SECCOMP_RET_ALLOW is the starting
+ 		 * state in seccomp_run_filters().
+-		 */
+ 		return 0;
+ 
+ 	case SECCOMP_RET_KILL_THREAD:
+ 	case SECCOMP_RET_KILL_PROCESS:
+ 	default:
+-		seccomp_log(this_syscall, SIGSYS, action, true);
+-		/* Dump core only if this is the last remaining thread. */
++/*		seccomp_log(this_syscall, SIGSYS, action, true);
+ 		if (action == SECCOMP_RET_KILL_PROCESS ||
+ 		    get_nr_threads(current) == 1) {
+ 			siginfo_t info;
+ 
+-			/* Show the original registers in the dump. */
+ 			syscall_rollback(current, task_pt_regs(current));
+-			/* Trigger a manual coredump since do_exit skips it. */
+ 			seccomp_init_siginfo(&info, this_syscall, data);
+ 			do_coredump(&info);
+ 		}
+@@ -762,13 +746,15 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+ 			do_group_exit(SIGSYS);
+ 		else
+ 			do_exit(SIGSYS);
+-	}
++*/return 0;
++//	}
++
+ 
+-	unreachable();
++//	unreachable();
+ 
+-skip:
+-	seccomp_log(this_syscall, 0, action, match ? match->log : false);
+-	return -1;
++//skip:
++//	seccomp_log(this_syscall, 0, action, match ? match->log : false);
++//	return -1;
+ }
+ #else
+ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
+@@ -792,7 +778,7 @@ int __secure_computing(const struct seccomp_data *sd)
+ 
+ 	switch (mode) {
+ 	case SECCOMP_MODE_STRICT:
+-		__secure_computing_strict(this_syscall);  /* may call do_exit */
++//		__secure_computing_strict(this_syscall);  /* may call do_exit */
+ 		return 0;
+ 	case SECCOMP_MODE_FILTER:
+ 		return __seccomp_filter(this_syscall, sd, false);
+-- 
+2.30.2
+

@@ -1,0 +1,63 @@
+From eac6bc7dfebef822bcc19fb9a10a465bb8c4203b Mon Sep 17 00:00:00 2001
+From: shichenlai <shichenlai@agora.io>
+Date: Thu, 12 Aug 2021 17:39:45 +0800
+Subject: [PATCH] 00001 - Fix build err of ranchu kernel dev 20190407
+
+Signed-off-by: shichenlai <shichenlai@agora.io>
+---
+ Makefile                                | 1 +
+ scripts/selinux/genheaders/genheaders.c | 1 -
+ scripts/selinux/mdp/mdp.c               | 1 -
+ security/selinux/include/classmap.h     | 1 -
+ 4 files changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 16951f206229..89b995bbeb1a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -365,6 +365,7 @@ HOSTCC       = gcc
+ HOSTCXX      = g++
+ HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 \
+ 		-fomit-frame-pointer -std=gnu89 $(HOST_LFS_CFLAGS)
++HOSTCFLAGS  += -fcommon
+ HOSTCXXFLAGS := -O2 $(HOST_LFS_CFLAGS)
+ HOSTLDFLAGS  := $(HOST_LFS_LDFLAGS)
+ HOST_LOADLIBES := $(HOST_LFS_LIBS)
+diff --git a/scripts/selinux/genheaders/genheaders.c b/scripts/selinux/genheaders/genheaders.c
+index fa48fabcb330..3cc4893d98cc 100644
+--- a/scripts/selinux/genheaders/genheaders.c
++++ b/scripts/selinux/genheaders/genheaders.c
+@@ -9,7 +9,6 @@
+ #include <string.h>
+ #include <errno.h>
+ #include <ctype.h>
+-#include <sys/socket.h>
+ 
+ struct security_class_mapping {
+ 	const char *name;
+diff --git a/scripts/selinux/mdp/mdp.c b/scripts/selinux/mdp/mdp.c
+index ffe8179f5d41..c29fa4a6228d 100644
+--- a/scripts/selinux/mdp/mdp.c
++++ b/scripts/selinux/mdp/mdp.c
+@@ -32,7 +32,6 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <string.h>
+-#include <sys/socket.h>
+ 
+ static void usage(char *name)
+ {
+diff --git a/security/selinux/include/classmap.h b/security/selinux/include/classmap.h
+index acdee7795297..cb6735fd97e6 100644
+--- a/security/selinux/include/classmap.h
++++ b/security/selinux/include/classmap.h
+@@ -1,6 +1,5 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ #include <linux/capability.h>
+-
+ #define COMMON_FILE_SOCK_PERMS "ioctl", "read", "write", "create", \
+     "getattr", "setattr", "lock", "relabelfrom", "relabelto", "append", "map"
+ 
+-- 
+2.30.2
+
