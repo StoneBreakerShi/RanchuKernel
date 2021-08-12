@@ -1,0 +1,26 @@
+From 37f07e76373b474b7ff523cdc0197dfe8de3e819 Mon Sep 17 00:00:00 2001
+From: shichenlai <shichenlai@agora.io>
+Date: Thu, 12 Aug 2021 19:31:21 +0800
+Subject: [PATCH] Build script for ranchu, to be impled
+
+Signed-off-by: shichenlai <shichenlai@agora.io>
+---
+ build.sh | 6 ++++++
+ 1 file changed, 6 insertions(+)
+ create mode 100644 build.sh
+
+diff --git a/build.sh b/build.sh
+new file mode 100644
+index 000000000000..e1d5edc3360e
+--- /dev/null
++++ b/build.sh
+@@ -0,0 +1,6 @@
++export ARCH=x86
++export REAL_CROSS_COMPILE=x86_64-linux-android-
++export PATH=/home/tshi/tshi/android-ndk-r17c/toolchains/x86_64-4.9/prebuilt/linux-x86_64/bin/:$PATH
++make x86_64_ranchu_defconfig
++make -j4
++
+-- 
+2.30.2
+
